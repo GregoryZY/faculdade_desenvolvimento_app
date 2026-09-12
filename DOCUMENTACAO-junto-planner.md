@@ -1,4 +1,4 @@
-# Junto — Documentação do Produto
+# TaskHub — Documentação do Produto
 ### Planner / Gestão de Tarefas Colaborativo para Equipes
 
 **Versão:** 1.0
@@ -28,7 +28,7 @@
 
 ## 1. Visão Geral
 
-**Junto** é uma aplicação web de planejamento e gestão de tarefas voltada para
+**TaskHub** é uma aplicação web de planejamento e gestão de tarefas voltada para
 equipes, que combina três formas de visualização do trabalho — **Calendário
 (Planner)**, **Kanban** e **Painel de Equipe** — em um único produto, com
 controle de acesso baseado em papéis (RBAC) que diferencia **Líderes/Gestores**
@@ -36,7 +36,7 @@ de **Colaboradores**.
 
 O produto resolve um problema comum em equipes pequenas e médias: a dispersão
 de informação entre um calendário (prazos), uma ferramenta de kanban (fluxo de
-trabalho) e um canal de chat (comentários/decisões). O Junto unifica essas três
+trabalho) e um canal de chat (comentários/decisões). O TaskHub unifica essas três
 camadas em torno de uma única entidade central: a **Tarefa**.
 
 Esta entrega corresponde a um **protótipo frontend completo e funcional**
