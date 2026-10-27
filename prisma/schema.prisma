@@ -1,0 +1,176 @@
+// ============================================================================
+// Schema Prisma — Planner / Gestão de Tarefas Colaborativo
+// Compatível com PostgreSQL (produção) ou SQLite (protótipo local).
+// Para SQLite, troque provider = "sqlite" e remova tipos não suportados
+// (ex.: enums viram String + checagem via Zod na camada de aplicação).
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// RBAC: papel do usuário na organização
+// ---------------------------------------------------------------------------
+enum Role {
+  LEADER // Líder / Gestor: cria projetos, atribui tarefas, aprova entregas
+  MEMBER // Colaborador: executa tarefas, comenta, cria tarefas privadas
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityAction {
+  CREATED
+  STATUS_CHANGED
+  DUE_DATE_CHANGED
+  ASSIGNED
+  UNASSIGNED
+  PRIORITY_CHANGED
+  COMMENTED
+  SUBTASK_TOGGLED
+}
+
+// ---------------------------------------------------------------------------
+// User — pertence a um Team (equipe) e possui um Role
+// ---------------------------------------------------------------------------
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(MEMBER)
+  title        String? // cargo, ex: "Designer de Produto"
+  avatarColor  String   @default("#0F5B52")
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id])
+  createdAt    DateTime @default(now())
+
+  // Relações
+  createdTasks     Task[]           @relation("TaskCreator")
+  assignments      TaskAssignment[]
+  comments         Comment[]
+  activityEntries  ActivityLog[]
+
+  @@index([teamId])
+}
+
+model Team {
+  id        String    @id @default(cuid())
+  name      String
+  createdAt DateTime  @default(now())
+  users     User[]
+  projects  Project[]
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#0F5B52")
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  tasks     Task[]
+  createdAt DateTime @default(now())
+
+  @@index([teamId])
+}
+
+// ---------------------------------------------------------------------------
+// Task — entidade central. Tarefas de equipe (isPrivate = false) só podem ser
+// criadas/atribuídas por LEADER; tarefas pessoais (isPrivate = true) são
+// criadas por qualquer usuário e visíveis apenas ao próprio criador.
+// ---------------------------------------------------------------------------
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String       @db.Text // markdown
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  tags        String[] // Postgres array; em SQLite, usar tabela Tag N:N
+  startDate   DateTime
+  dueDate     DateTime
+  isPrivate   Boolean      @default(false)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  creatorId String
+  creator   User   @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments TaskAssignment[]
+  subtasks    Subtask[]
+  comments    Comment[]
+  activity    ActivityLog[]
+
+  @@index([projectId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+// Tabela de junção N:N entre Task e User (múltiplos responsáveis)
+model TaskAssignment {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+model Subtask {
+  id     String  @id @default(cuid())
+  taskId String
+  task   Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title  String
+  done   Boolean @default(false)
+  order  Int     @default(0)
+
+  @@index([taskId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model ActivityLog {
+  id        String         @id @default(cuid())
+  taskId    String
+  task      Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User           @relation(fields: [actorId], references: [id])
+  action    ActivityAction
+  message   String
+  createdAt DateTime       @default(now())
+
+  @@index([taskId])
+}
