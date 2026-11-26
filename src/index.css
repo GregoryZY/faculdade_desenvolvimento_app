@@ -38,3 +38,19 @@
   outline: 2px dashed #6FA895;
   outline-offset: -2px;
 }
+
+/* Telas de toque não têm hover: botões que só apareciam no hover ficam sempre visíveis. */
+@media (hover: none) {
+  .touch-visible {
+    opacity: 1 !important;
+  }
+}
+
+/* iOS dá zoom automático em campos com fonte < 16px; evita isso no celular. */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
