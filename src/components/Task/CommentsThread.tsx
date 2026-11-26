@@ -3,6 +3,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { Avatar, Button } from "@/components/ui/primitives";
 import { userById, formatDateTime } from "@/lib/utils";
 import { Send } from "lucide-react";
+import { User } from "@/types";
 
 export default function CommentsThread({ taskId }: { taskId: string }) {
   const comments = useAppStore((s) => s.commentsForTask(taskId));
@@ -26,8 +27,12 @@ export default function CommentsThread({ taskId }: { taskId: string }) {
           </p>
         )}
         {comments.map((c) => {
-          const author = userById(users, c.authorId);
-          if (!author) return null;
+          const author: User = userById(users, c.authorId) ?? {
+            id: c.authorId,
+            name: "Pessoa removida",
+            email: "",
+            avatarColor: "#9CA3AF",
+          };
           return (
             <div key={c.id} className="flex gap-2.5">
               <Avatar user={author} size="sm" />

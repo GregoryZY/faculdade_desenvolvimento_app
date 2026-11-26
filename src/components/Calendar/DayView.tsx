@@ -3,6 +3,7 @@ import { format, isToday } from "date-fns";
 import { Task } from "@/types";
 import TaskCard from "@/components/Task/TaskCard";
 import { toDateKey } from "@/lib/utils";
+import { ptBR } from "date-fns/locale";
 import { Plus, CalendarDays } from "lucide-react";
 
 interface Props {
@@ -19,13 +20,13 @@ export default function DayView({ refDate, tasks, onOpenTask, onQuickAdd }: Prop
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-panel border border-slate-100 bg-white p-5">
+    <div className="mx-auto flex max-w-2xl flex-col gap-3 rounded-panel border border-slate-100 bg-white p-3 sm:h-full sm:overflow-y-auto sm:p-5">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2">
           <CalendarDays size={18} className="text-pine-500" />
           <div>
             <p className={isToday(refDate) ? "font-display text-lg font-semibold text-pine-600" : "font-display text-lg font-semibold text-ink"}>
-              {format(refDate, "EEEE, d 'de' MMMM")}
+              {format(refDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
             </p>
             <p className="text-xs text-slate-500">{dayTasks.length} tarefa(s) com prazo neste dia</p>
           </div>

@@ -1,12 +1,13 @@
 import React, { useState } from "react";
-import { Task, TaskStatus, TaskPriority, PRIORITY_LABEL, STATUS_LABEL, KANBAN_COLUMNS } from "@/types";
+import { TaskStatus, TaskPriority, PRIORITY_LABEL, STATUS_LABEL, KANBAN_COLUMNS, PROJECT_ROLE_LABEL } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import { Modal, Button, Avatar, Badge } from "@/components/ui/primitives";
 import SubtaskList from "./SubtaskList";
 import CommentsThread from "./CommentsThread";
 import ActivityLog from "./ActivityLog";
-import { PRIORITY_BADGE, userById, cn, isOverdue } from "@/lib/utils";
-import { X, Calendar, Trash2, Lock } from "lucide-react";
+import { PRIORITY_BADGE, cn, isOverdue, toLocalInputValue, userById } from "@/lib/utils";
+import { roleIn, canEditTask, canChangeStatus, canAssignTask } from "@/lib/permissions";
+import { X, Calendar, Trash2 } from "lucide-react";
 
 type Tab = "details" | "checklist" | "comments" | "activity";
 
@@ -15,7 +16,7 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
   const users = useAppStore((s) => s.users);
   const projects = useAppStore((s) => s.projects);
   const me = useAppStore((s) => s.currentUser());
-  const isLeader = useAppStore((s) => s.isLeader());
+  const memberships = useAppStore((s) => s.memberships);
   const updateStatus = useAppStore((s) => s.updateTaskStatus);
   const updateFields = useAppStore((s) => s.updateTaskFields);
   const reschedule = useAppStore((s) => s.rescheduleTask);
@@ -25,8 +26,20 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
 
   if (!task) return null;
 
-  const canManage = isLeader || task.creatorId === me.id;
-  const canAssign = isLeader && !task.isPrivate;
+  // Meu papel NESTE projeto. Sem papel (ex.: fui removido), não há o que mostrar.
+  const role = roleIn(memberships, task.projectId, me.id);
+  if (role === null) return null;
+  const project = projects.find((p) => p.id === task.projectId);
+  const creator = userById(users, task.creatorId);
+  const projectMembers = memberships
+    .filter((m) => m.projectId === task.projectId)
+    .map((m) => users.find((u) => u.id === m.userId))
+    .filter(Boolean) as typeof users;
+
+  // Mesmas regras que a store aplica (lib/permissions.ts): aqui só decidem o que habilitar.
+  const canManage = canEditTask(role, task, me.id);
+  const canStatus = canChangeStatus(role, task, me.id);
+  const canAssign = canAssignTask(role);
   const overdue = isOverdue(task.dueDate, task.status);
 
   function handleClose() {
@@ -44,16 +57,17 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
 
   return (
     <Modal open onClose={handleClose} widthClass="max-w-3xl">
-      <div className="flex max-h-[88vh] flex-col">
+      <div className="flex max-h-[92dvh] flex-col sm:max-h-[88vh]">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
+        <div className="flex items-start justify-between gap-2 border-b border-slate-100 p-4 sm:gap-4 sm:p-5">
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 flex items-center gap-2 text-xs text-slate-500">
-              {task.isPrivate ? (
-                <span className="flex items-center gap-1"><Lock size={12} /> Tarefa pessoal</span>
-              ) : (
-                <span>{projects.find((p) => p.id === task.projectId)?.name ?? "Sem projeto"}</span>
-              )}
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: project?.color ?? "#999" }} />
+                {project?.name ?? "Projeto"}
+              </span>
+              <span>· criada por {creator?.name ?? "pessoa removida"}</span>
+              <span>· você: {PROJECT_ROLE_LABEL[role]}</span>
               {overdue && <Badge className="bg-clay-100 text-clay-600">Atrasada</Badge>}
             </div>
             {editingTitle ? (
@@ -96,7 +110,7 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-slate-100 px-5">
+        <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 sm:px-5">
           {(
             [
               ["details", "Detalhes"],
@@ -109,7 +123,7 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
               key={key}
               onClick={() => setTab(key)}
               className={cn(
-                "border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+                "shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
                 tab === key ? "border-pine-500 text-pine-600" : "border-transparent text-slate-500 hover:text-ink"
               )}
             >
@@ -119,7 +133,7 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
           {tab === "details" && (
             <div className="space-y-5">
               <div>
@@ -134,13 +148,14 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-500">Status</label>
                   <select
                     value={task.status}
+                    disabled={!canStatus}
                     onChange={(e) => updateStatus(task.id, e.target.value as TaskStatus)}
-                    className="w-full rounded-card border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-pine-500"
+                    className="w-full rounded-card border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-pine-500 disabled:bg-slate-100"
                   >
                     {KANBAN_COLUMNS.map((s) => (
                       <option key={s} value={s}>
@@ -173,7 +188,7 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
                       type="date"
                       defaultValue={task.startDate}
                       disabled={!canManage}
-                      onChange={(e) => reschedule(task.id, e.target.value, task.dueDate)}
+                      onChange={(e) => e.target.value && reschedule(task.id, e.target.value, task.dueDate)}
                       className="w-full text-sm outline-none disabled:bg-transparent"
                     />
                   </div>
@@ -184,9 +199,10 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
                     <Calendar size={14} className="text-slate-400" />
                     <input
                       type="datetime-local"
-                      defaultValue={task.dueDate.slice(0, 16)}
+                      defaultValue={toLocalInputValue(task.dueDate)}
                       disabled={!canManage}
                       onChange={(e) =>
+                        e.target.value &&
                         reschedule(task.id, task.startDate, new Date(e.target.value).toISOString())
                       }
                       className="w-full text-sm outline-none disabled:bg-transparent"
@@ -197,10 +213,10 @@ export default function TaskModal({ taskId, onClose }: { taskId: string; onClose
 
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-500">
-                  Responsáveis {!canAssign && "(somente o líder atribui tarefas de equipe)"}
+                  Responsáveis {!canAssign && "(somente líder e co-líder delegam tarefas)"}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {users.map((u) => {
+                  {projectMembers.map((u) => {
                     const active = task.assigneeIds.includes(u.id);
                     return (
                       <button

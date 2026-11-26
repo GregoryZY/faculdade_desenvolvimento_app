@@ -3,7 +3,7 @@ import { Task } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import { AvatarStack } from "@/components/ui/primitives";
 import { PRIORITY_DOT, isOverdue, userById, cn } from "@/lib/utils";
-import { Lock, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 interface Props {
   task: Task;
@@ -14,6 +14,7 @@ interface Props {
 
 export default function TaskCard({ task, onClick, compact, draggable = true }: Props) {
   const users = useAppStore((s) => s.users);
+  const project = useAppStore((s) => s.projects.find((p) => p.id === task.projectId));
   const progress = useAppStore((s) => s.taskProgress(task.id));
   const assignees = task.assigneeIds.map((id) => userById(users, id)).filter(Boolean) as any[];
   const overdue = isOverdue(task.dueDate, task.status);
@@ -41,8 +42,14 @@ export default function TaskCard({ task, onClick, compact, draggable = true }: P
             {task.title}
           </span>
         </div>
-        {task.isPrivate && <Lock size={12} className="shrink-0 text-slate-500" />}
       </div>
+
+      {!compact && project && (
+        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: project.color }} />
+          <span className="truncate">{project.name}</span>
+        </span>
+      )}
 
       {!compact && task.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">

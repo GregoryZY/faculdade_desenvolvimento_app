@@ -38,9 +38,9 @@ export default function CalendarView({ tasks, onOpenTask, onQuickAdd }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex flex-col gap-3 sm:h-full">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={goPrev} className="rounded-card border border-slate-300 p-1.5 hover:bg-slate-100" aria-label="Anterior">
             <ChevronLeft size={16} />
           </button>
@@ -50,10 +50,10 @@ export default function CalendarView({ tasks, onOpenTask, onQuickAdd }: Props) {
           <Button variant="secondary" onClick={goToday} className="ml-1">
             Hoje
           </Button>
-          <h2 className="ml-2 font-display text-lg font-semibold capitalize text-ink">{title}</h2>
+          <h2 className="w-full font-display text-lg font-semibold capitalize text-ink sm:ml-2 sm:w-auto">{title}</h2>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex rounded-card border border-slate-300 p-0.5">
             {(["month", "week", "day"] as ViewMode[]).map((m) => (
               <button
@@ -74,8 +74,8 @@ export default function CalendarView({ tasks, onOpenTask, onQuickAdd }: Props) {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
-        {mode === "month" && <MonthView refDate={refDate} tasks={tasks} onOpenTask={onOpenTask} onQuickAdd={onQuickAdd} />}
+      <div className="sm:min-h-0 sm:flex-1">
+        {mode === "month" && <MonthView refDate={refDate} tasks={tasks} onOpenTask={onOpenTask} onQuickAdd={onQuickAdd} onSelectDay={setRefDate} />}
         {mode === "week" && <WeekView refDate={refDate} tasks={tasks} onOpenTask={onOpenTask} onQuickAdd={onQuickAdd} />}
         {mode === "day" && <DayView refDate={refDate} tasks={tasks} onOpenTask={onOpenTask} onQuickAdd={onQuickAdd} />}
       </div>

@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { KANBAN_COLUMNS, STATUS_LABEL, Task, TaskStatus } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import TaskCard from "@/components/Task/TaskCard";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/primitives";
+import { cn, toDateKey } from "@/lib/utils";
+import { Plus } from "lucide-react";
 
 const COLUMN_ACCENT: Record<TaskStatus, string> = {
   TODO: "border-t-slate-400",
@@ -11,7 +13,15 @@ const COLUMN_ACCENT: Record<TaskStatus, string> = {
   DONE: "border-t-pine-500",
 };
 
-export default function KanbanBoard({ tasks, onOpenTask }: { tasks: Task[]; onOpenTask: (id: string) => void }) {
+export default function KanbanBoard({
+  tasks,
+  onOpenTask,
+  onQuickAdd,
+}: {
+  tasks: Task[];
+  onOpenTask: (id: string) => void;
+  onQuickAdd?: (dateKey: string) => void;
+}) {
   const updateStatus = useAppStore((s) => s.updateTaskStatus);
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
 
@@ -23,7 +33,16 @@ export default function KanbanBoard({ tasks, onOpenTask }: { tasks: Task[]; onOp
   }
 
   return (
-    <div className="grid h-full grid-cols-1 gap-3 overflow-x-auto sm:grid-cols-2 lg:grid-cols-4">
+    <div className="flex h-full flex-col gap-3">
+      {onQuickAdd && (
+        <div className="hidden justify-end sm:flex">
+          <Button onClick={() => onQuickAdd(toDateKey(new Date()))}>
+            <Plus size={15} /> Nova tarefa
+          </Button>
+        </div>
+      )}
+      {/* Celular: colunas lado a lado com rolagem horizontal; desktop: 4 colunas */}
+      <div className="-mx-3 flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-4 lg:snap-none lg:overflow-visible">
       {KANBAN_COLUMNS.map((status) => {
         const colTasks = tasks.filter((t) => t.status === status);
         return (
@@ -36,7 +55,7 @@ export default function KanbanBoard({ tasks, onOpenTask }: { tasks: Task[]; onOp
             onDragLeave={() => setDragOverCol((c) => (c === status ? null : c))}
             onDrop={(e) => handleDrop(e, status)}
             className={cn(
-              "flex min-h-[50vh] flex-col gap-2 rounded-panel border border-t-4 border-slate-100 bg-slate-50/60 p-2.5",
+              "flex min-h-[50vh] w-[85%] shrink-0 snap-center flex-col gap-2 rounded-panel sm:w-[45%] lg:w-auto border border-t-4 border-slate-100 bg-slate-50/60 p-2.5",
               COLUMN_ACCENT[status],
               dragOverCol === status && "drop-target-active"
             )}
@@ -58,6 +77,7 @@ export default function KanbanBoard({ tasks, onOpenTask }: { tasks: Task[]; onOp
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

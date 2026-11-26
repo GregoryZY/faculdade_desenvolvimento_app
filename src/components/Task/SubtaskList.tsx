@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { ProgressBar } from "@/components/ui/primitives";
+import { roleIn, canChangeStatus } from "@/lib/permissions";
 import { Plus, X } from "lucide-react";
 
 export default function SubtaskList({ taskId }: { taskId: string }) {
@@ -10,6 +11,13 @@ export default function SubtaskList({ taskId }: { taskId: string }) {
   const add = useAppStore((s) => s.addSubtask);
   const progress = useAppStore((s) => s.taskProgress(taskId));
   const [draft, setDraft] = useState("");
+
+  // Quem pode mexer no checklist: líder, co-líder e o colaborador dono/responsável pela tarefa.
+  const canAct = useAppStore((s) => {
+    const t = s.tasks.find((x) => x.id === taskId);
+    if (!t) return false;
+    return canChangeStatus(roleIn(s.memberships, t.projectId, s.currentUserId), t, s.currentUserId);
+  });
 
   function submit() {
     if (!draft.trim()) return;
@@ -33,23 +41,31 @@ export default function SubtaskList({ taskId }: { taskId: string }) {
             <input
               type="checkbox"
               checked={st.done}
+              disabled={!canAct}
               onChange={() => toggle(st.id)}
               className="h-4 w-4 shrink-0 rounded border-slate-300 text-pine-500 focus:ring-pine-500"
             />
             <span className={st.done ? "flex-1 text-sm text-slate-400 line-through" : "flex-1 text-sm text-ink"}>
               {st.title}
             </span>
+            {canAct && (
             <button
               onClick={() => remove(st.id)}
-              className="hidden text-slate-400 hover:text-clay-500 group-hover:block"
+              className="touch-visible p-1 text-slate-400 opacity-100 hover:text-clay-500 focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"
               aria-label="Remover item"
             >
               <X size={14} />
             </button>
+            )}
           </li>
         ))}
       </ul>
 
+      {!canAct && (
+        <p className="text-xs text-slate-400">Apenas os responsáveis, o líder e os co-líderes alteram o checklist.</p>
+      )}
+
+      {canAct && (
       <div className="flex items-center gap-2 pt-1">
         <input
           value={draft}
@@ -66,6 +82,7 @@ export default function SubtaskList({ taskId }: { taskId: string }) {
           <Plus size={14} />
         </button>
       </div>
+      )}
     </div>
   );
 }

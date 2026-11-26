@@ -1,15 +1,14 @@
-import { AppState, Task, User, Project, Subtask, Comment, ActivityLogEntry } from "@/types";
+import { AppState, Task, User, Project, Membership, Subtask, Comment, ActivityLogEntry } from "@/types";
 import { toDateKey } from "@/lib/utils";
 
 // --------------------------------------------------------------------------
-// Usuários: 1 Líder + 4 Colaboradores
+// Usuários de demonstração (os papéis vêm das memberships, por projeto)
 // --------------------------------------------------------------------------
 export const mockUsers: User[] = [
   {
     id: "u-lider",
     name: "Marina Costa",
     email: "marina.costa@empresa.com",
-    role: "LEADER",
     title: "Gerente de Produto",
     avatarColor: "#0F5B52",
   },
@@ -17,7 +16,6 @@ export const mockUsers: User[] = [
     id: "u-1",
     name: "Rafael Nunes",
     email: "rafael.nunes@empresa.com",
-    role: "MEMBER",
     title: "Desenvolvedor Frontend",
     avatarColor: "#B87A1F",
   },
@@ -25,7 +23,6 @@ export const mockUsers: User[] = [
     id: "u-2",
     name: "Beatriz Lima",
     email: "beatriz.lima@empresa.com",
-    role: "MEMBER",
     title: "Designer de Produto",
     avatarColor: "#9E3220",
   },
@@ -33,7 +30,6 @@ export const mockUsers: User[] = [
     id: "u-3",
     name: "Diego Santos",
     email: "diego.santos@empresa.com",
-    role: "MEMBER",
     title: "Desenvolvedor Backend",
     avatarColor: "#454842",
   },
@@ -41,16 +37,42 @@ export const mockUsers: User[] = [
     id: "u-4",
     name: "Carla Mendes",
     email: "carla.mendes@empresa.com",
-    role: "MEMBER",
     title: "QA Analyst",
     avatarColor: "#0C4A43",
   },
 ];
 
 export const mockProjects: Project[] = [
-  { id: "p-1", name: "App Mobile v2", color: "#0F5B52" },
-  { id: "p-2", name: "Site Institucional", color: "#B87A1F" },
-  { id: "p-3", name: "Onboarding Interno", color: "#9E3220" },
+  { id: "p-1", name: "App Mobile v2", color: "#0F5B52", ownerId: "u-lider" },
+  { id: "p-2", name: "Site Institucional", color: "#B87A1F", ownerId: "u-2" },
+  { id: "p-3", name: "Onboarding Interno", color: "#9E3220", ownerId: "u-lider" },
+];
+
+// Papéis por projeto: a mesma pessoa pode ser líder num projeto e colaboradora em outro.
+export const mockMemberships: Membership[] = [
+  // App Mobile v2 — líder: Marina
+  { projectId: "p-1", userId: "u-lider", role: "LEADER" },
+  { projectId: "p-1", userId: "u-1", role: "CO_LEADER" },
+  { projectId: "p-1", userId: "u-2", role: "MEMBER" },
+  { projectId: "p-1", userId: "u-3", role: "MEMBER" },
+  { projectId: "p-1", userId: "u-4", role: "MEMBER" },
+  // Site Institucional — líder: Beatriz
+  { projectId: "p-2", userId: "u-2", role: "LEADER" },
+  { projectId: "p-2", userId: "u-lider", role: "MEMBER" },
+  { projectId: "p-2", userId: "u-1", role: "MEMBER" },
+  // Onboarding Interno — líder: Marina
+  { projectId: "p-3", userId: "u-lider", role: "LEADER" },
+  { projectId: "p-3", userId: "u-3", role: "CO_LEADER" },
+  { projectId: "p-3", userId: "u-4", role: "MEMBER" },
+];
+
+// Atalhos da tela de login (modo demonstração)
+export const demoAccounts: { userId: string; description: string }[] = [
+  { userId: "u-lider", description: "Líder em App Mobile v2 e Onboarding · colaboradora em Site Institucional" },
+  { userId: "u-1", description: "Co-líder em App Mobile v2 · colaborador em Site Institucional" },
+  { userId: "u-2", description: "Líder em Site Institucional · colaboradora em App Mobile v2" },
+  { userId: "u-3", description: "Colaborador em App Mobile v2 · co-líder em Onboarding Interno" },
+  { userId: "u-4", description: "Colaboradora em App Mobile v2 e Onboarding Interno" },
 ];
 
 function iso(daysFromNow: number, hour = 18, minute = 0): string {
@@ -82,7 +104,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(-1, 17, 0), // atrasada
     assigneeIds: ["u-2"],
     creatorId: "u-lider",
-    isPrivate: false,
     createdAt: iso(-5),
     updatedAt: iso(-1),
   },
@@ -98,7 +119,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(0, 20, 0), // vence hoje
     assigneeIds: ["u-3"],
     creatorId: "u-lider",
-    isPrivate: false,
     createdAt: iso(-3),
     updatedAt: iso(-3),
   },
@@ -114,7 +134,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(3, 12, 0),
     assigneeIds: ["u-4"],
     creatorId: "u-lider",
-    isPrivate: false,
     createdAt: iso(-2),
     updatedAt: iso(-2),
   },
@@ -129,8 +148,7 @@ export const mockTasks: Task[] = [
     startDate: dateOnly(-4),
     dueDate: iso(-1, 15, 0), // atrasada, em revisão
     assigneeIds: ["u-1", "u-2"],
-    creatorId: "u-lider",
-    isPrivate: false,
+    creatorId: "u-2",
     createdAt: iso(-6),
     updatedAt: iso(-1),
   },
@@ -146,7 +164,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(-6, 18, 0),
     assigneeIds: ["u-3"],
     creatorId: "u-lider",
-    isPrivate: false,
     createdAt: iso(-12),
     updatedAt: iso(-6),
   },
@@ -162,7 +179,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(5, 18, 0),
     assigneeIds: ["u-lider"],
     creatorId: "u-lider",
-    isPrivate: false,
     createdAt: iso(-1),
     updatedAt: iso(-1),
   },
@@ -178,7 +194,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(2, 17, 0),
     assigneeIds: ["u-1"],
     creatorId: "u-lider",
-    isPrivate: false,
     createdAt: iso(0),
     updatedAt: iso(0),
   },
@@ -186,7 +201,7 @@ export const mockTasks: Task[] = [
     id: "t-8",
     title: "Dentista",
     description: "Consulta de rotina.",
-    projectId: null,
+    projectId: "p-1",
     status: "TODO",
     priority: "LOW",
     tags: ["pessoal"],
@@ -194,7 +209,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(2, 9, 30),
     assigneeIds: ["u-1"],
     creatorId: "u-1",
-    isPrivate: true,
     createdAt: iso(-1),
     updatedAt: iso(-1),
   },
@@ -210,7 +224,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(1, 14, 0),
     assigneeIds: ["u-lider", "u-3"],
     creatorId: "u-lider",
-    isPrivate: false,
     createdAt: iso(-3),
     updatedAt: iso(0),
   },
@@ -218,7 +231,7 @@ export const mockTasks: Task[] = [
     id: "t-10",
     title: "Estudar para certificação AWS",
     description: "Módulos 4 a 6 do curso antes da prova.",
-    projectId: null,
+    projectId: "p-1",
     status: "IN_PROGRESS",
     priority: "MEDIUM",
     tags: ["pessoal", "estudo"],
@@ -226,7 +239,6 @@ export const mockTasks: Task[] = [
     dueDate: iso(6, 20, 0),
     assigneeIds: ["u-3"],
     creatorId: "u-3",
-    isPrivate: true,
     createdAt: iso(-3),
     updatedAt: iso(-3),
   },
@@ -302,7 +314,7 @@ export const mockActivity: ActivityLogEntry[] = [
   {
     id: "a-3",
     taskId: "t-4",
-    actorId: "u-lider",
+    actorId: "u-2",
     action: "DUE_DATE_CHANGED",
     message: "alterou o prazo de 30/08 para ontem",
     createdAt: iso(-2),
@@ -325,11 +337,16 @@ export const mockActivity: ActivityLogEntry[] = [
   },
 ];
 
+// Senha única de DEMONSTRAÇÃO (somente front). Com backend real, a senha vira hash no banco.
+export const DEMO_PASSWORD = "123456";
+
 export function buildInitialState(): AppState {
   return {
     currentUserId: "u-lider",
+    authed: false,
     users: mockUsers,
     projects: mockProjects,
+    memberships: mockMemberships,
     tasks: mockTasks,
     subtasks: mockSubtasks,
     comments: mockComments,

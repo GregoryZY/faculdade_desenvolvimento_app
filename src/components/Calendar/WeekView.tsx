@@ -4,6 +4,7 @@ import { Task } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import TaskCard from "@/components/Task/TaskCard";
 import { toDateKey, cn } from "@/lib/utils";
+import { ptBR } from "date-fns/locale";
 import { Plus } from "lucide-react";
 
 interface Props {
@@ -40,7 +41,7 @@ export default function WeekView({ refDate, tasks, onOpenTask, onQuickAdd }: Pro
   }
 
   return (
-    <div className="grid h-full grid-cols-7 gap-2 overflow-y-auto">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:h-full lg:grid-cols-7 lg:overflow-y-auto">
       {days.map((day) => {
         const key = toDateKey(day);
         const dayTasks = (tasksByDay.get(key) ?? []).slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -54,22 +55,22 @@ export default function WeekView({ refDate, tasks, onOpenTask, onQuickAdd }: Pro
             onDragLeave={() => setDragOverKey((k) => (k === key ? null : k))}
             onDrop={(e) => handleDrop(e, key)}
             className={cn(
-              "flex min-h-[60vh] flex-col gap-1.5 rounded-panel border border-slate-100 bg-white p-2.5",
+              "flex min-h-[96px] flex-col lg:min-h-[60vh] gap-1.5 rounded-panel border border-slate-100 bg-white p-2.5",
               dragOverKey === key && "drop-target-active"
             )}
           >
             <div className="mb-1 flex items-center justify-between">
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                  {format(day, "EEE", {})}
+                  {format(day, "EEE", { locale: ptBR })}
                 </p>
                 <p className={cn("text-sm font-semibold", isToday(day) ? "text-pine-600" : "text-ink")}>
-                  {format(day, "d MMM")}
+                  {format(day, "d MMM", { locale: ptBR })}
                 </p>
               </div>
               <button
                 onClick={() => onQuickAdd(key)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-100"
+                className="rounded p-1.5 text-slate-400 hover:bg-slate-100"
                 aria-label="Adicionar tarefa"
               >
                 <Plus size={14} />
