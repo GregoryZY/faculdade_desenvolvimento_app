@@ -5,6 +5,15 @@
 **Tipo de documento:** Documentação técnica e de escopo
 **Status:** Protótipo funcional (frontend completo, backend especificado)
 
+> **⚠ Atualização do modelo de acesso (substitui o que estiver em contrário abaixo).**
+> Os papéis deixaram de ser globais (Líder/Colaborador da organização) e passaram
+> a ser **por projeto**: qualquer pessoa cria uma conta e pode criar projetos;
+> quem cria é o **Líder** do projeto, que adiciona **Co-líderes** (criam, delegam
+> e gerenciam tarefas) e **Colaboradores** (executam suas tarefas). Não existem
+> mais "tarefas pessoais/privadas": toda tarefa pertence a um projeto. A tabela
+> de permissões vigente está no `README.md` e o modelo de dados em
+> `prisma/schema.prisma` (`ProjectMember`, `ProjectRole`).
+
 ---
 
 ## Sumário
