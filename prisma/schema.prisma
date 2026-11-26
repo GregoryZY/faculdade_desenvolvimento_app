@@ -3,6 +3,11 @@
 // Compatível com PostgreSQL (produção) ou SQLite (protótipo local).
 // Para SQLite, troque provider = "sqlite" e remova tipos não suportados
 // (ex.: enums viram String + checagem via Zod na camada de aplicação).
+//
+// MODELO DE ACESSO: não existe papel global. Qualquer pessoa cria uma conta
+// (User) e pode criar Projetos; quem cria vira LEADER daquele projeto. O papel
+// de cada pessoa vive em ProjectMember, então a mesma pessoa pode ser líder num
+// projeto e colaboradora em outro.
 // ============================================================================
 
 generator client {
@@ -15,11 +20,12 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
-// RBAC: papel do usuário na organização
+// RBAC: papel da pessoa DENTRO de um projeto
 // ---------------------------------------------------------------------------
-enum Role {
-  LEADER // Líder / Gestor: cria projetos, atribui tarefas, aprova entregas
-  MEMBER // Colaborador: executa tarefas, comenta, cria tarefas privadas
+enum ProjectRole {
+  LEADER // criou o projeto: gerencia membros, papéis e todas as tarefas; exclui o projeto
+  CO_LEADER // escolhido pelo líder: cria, delega e gerencia tarefas; não gerencia membros
+  MEMBER // colaborador: executa as tarefas atribuídas e cria tarefas só para si
 }
 
 enum TaskStatus {
@@ -48,53 +54,63 @@ enum ActivityAction {
 }
 
 // ---------------------------------------------------------------------------
-// User — pertence a um Team (equipe) e possui um Role
+// User — conta cadastrada (login por e-mail + senha com hash)
 // ---------------------------------------------------------------------------
 model User {
   id           String   @id @default(cuid())
   name         String
   email        String   @unique
   passwordHash String
-  role         Role     @default(MEMBER)
-  title        String? // cargo, ex: "Designer de Produto"
+  title        String? // cargo (opcional)
   avatarColor  String   @default("#0F5B52")
-  teamId       String
-  team         Team     @relation(fields: [teamId], references: [id])
   createdAt    DateTime @default(now())
 
   // Relações
-  createdTasks     Task[]           @relation("TaskCreator")
-  assignments      TaskAssignment[]
-  comments         Comment[]
-  activityEntries  ActivityLog[]
-
-  @@index([teamId])
-}
-
-model Team {
-  id        String    @id @default(cuid())
-  name      String
-  createdAt DateTime  @default(now())
-  users     User[]
-  projects  Project[]
-}
-
-model Project {
-  id        String   @id @default(cuid())
-  name      String
-  color     String   @default("#0F5B52")
-  teamId    String
-  team      Team     @relation(fields: [teamId], references: [id])
-  tasks     Task[]
-  createdAt DateTime @default(now())
-
-  @@index([teamId])
+  ownedProjects   Project[]        @relation("ProjectOwner")
+  memberships     ProjectMember[]
+  createdTasks    Task[]           @relation("TaskCreator")
+  assignments     TaskAssignment[]
+  comments        Comment[]
+  activityEntries ActivityLog[]
 }
 
 // ---------------------------------------------------------------------------
-// Task — entidade central. Tarefas de equipe (isPrivate = false) só podem ser
-// criadas/atribuídas por LEADER; tarefas pessoais (isPrivate = true) são
-// criadas por qualquer usuário e visíveis apenas ao próprio criador.
+// Project — criado por um usuário (owner = líder)
+// ---------------------------------------------------------------------------
+model Project {
+  id        String          @id @default(cuid())
+  name      String
+  color     String          @default("#0F5B52")
+  ownerId   String
+  owner     User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members   ProjectMember[]
+  tasks     Task[]
+  createdAt DateTime        @default(now())
+
+  @@unique([ownerId, name]) // nome único entre os projetos de um mesmo líder
+  @@index([ownerId])
+}
+
+// ---------------------------------------------------------------------------
+// ProjectMember — vínculo pessoa ↔ projeto com o papel dela nele.
+// O dono do projeto sempre tem uma linha com role = LEADER.
+// ---------------------------------------------------------------------------
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      ProjectRole @default(MEMBER)
+  joinedAt  DateTime    @default(now())
+
+  @@unique([projectId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Task — pertence sempre a um projeto. Quem pode criar/editar/delegar depende
+// do papel de cada pessoa no projeto (ver tabela em src/lib/permissions.ts).
 // ---------------------------------------------------------------------------
 model Task {
   id          String       @id @default(cuid())
@@ -105,10 +121,9 @@ model Task {
   tags        String[] // Postgres array; em SQLite, usar tabela Tag N:N
   startDate   DateTime
   dueDate     DateTime
-  isPrivate   Boolean      @default(false)
 
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id])
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   creatorId String
   creator   User   @relation("TaskCreator", fields: [creatorId], references: [id])
@@ -126,7 +141,8 @@ model Task {
   @@index([status])
 }
 
-// Tabela de junção N:N entre Task e User (múltiplos responsáveis)
+// Tabela de junção N:N entre Task e User (múltiplos responsáveis).
+// Regra de aplicação: o responsável precisa ser membro do projeto da tarefa.
 model TaskAssignment {
   id         String   @id @default(cuid())
   taskId     String
