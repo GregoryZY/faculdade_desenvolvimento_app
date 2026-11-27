@@ -22,6 +22,8 @@ export default function App() {
   const [newTaskDate, setNewTaskDate] = useState<string | undefined>(undefined);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const initialized = useAppStore((s) => s.initialized);
+  const init = useAppStore((s) => s.init);
   const authed = useAppStore((s) => s.authed);
   const currentUserId = useAppStore((s) => s.currentUserId);
   const users = useAppStore((s) => s.users);
@@ -29,6 +31,10 @@ export default function App() {
   const memberships = useAppStore((s) => s.memberships);
   const visibleTasks = useAppStore((s) => s.visibleTasks());
   const managesAny = useAppStore((s) => s.managedProjectIds().length > 0);
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   const myProjectIds = useMemo(
     () => memberships.filter((m) => m.userId === currentUserId).map((m) => m.projectId),
@@ -73,6 +79,11 @@ export default function App() {
   function openQuickAdd(dateKey: string) {
     setNewTaskDate(dateKey);
     setNewTaskOpen(true);
+  }
+
+  // Returns condicionais sempre DEPOIS de todos os hooks
+  if (!initialized) {
+    return <div className="flex min-h-[100dvh] items-center justify-center bg-paper p-8 text-sm text-slate-500">Carregando dados...</div>;
   }
 
   if (!authed) return <LoginScreen />;

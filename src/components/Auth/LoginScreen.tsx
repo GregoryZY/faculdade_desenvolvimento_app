@@ -1,15 +1,12 @@
 import React, { useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
-import { Avatar, Button } from "@/components/ui/primitives";
-import { DEMO_PASSWORD, demoAccounts } from "@/mock/mockData";
+import { Button } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
 
 const inputCls = "w-full rounded-card border border-slate-300 px-3 py-2 text-sm outline-none focus:border-pine-500";
 
 export default function LoginScreen() {
-  const users = useAppStore((s) => s.users);
   const login = useAppStore((s) => s.login);
-  const loginAs = useAppStore((s) => s.loginAs);
   const register = useAppStore((s) => s.register);
 
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -18,29 +15,35 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   function switchMode(m: "login" | "register") {
     setMode(m);
     setError("");
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
+
     if (mode === "login") {
-      if (!login(email, password)) setError("E-mail ou senha incorretos.");
+      setLoading(true);
+      const ok = await login(email, password);
+      setLoading(false);
+      if (!ok) setError("E-mail ou senha incorretos.");
       return;
     }
+
     if (password !== confirm) {
       setError("As senhas não conferem.");
       return;
     }
-    const r = register({ name, email, password });
+
+    setLoading(true);
+    const r = await register({ name, email, password });
+    setLoading(false);
     if (!r.ok) setError(r.error);
   }
-
-  const demo = demoAccounts
-    .map((d) => ({ ...d, user: users.find((u) => u.id === d.userId) }))
-    .filter((d) => !!d.user);
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-paper p-4">
@@ -82,7 +85,16 @@ export default function LoginScreen() {
               <label htmlFor="name" className="mb-1 block text-xs font-medium text-slate-500">
                 Nome completo
               </label>
-              <input id="name" autoComplete="name" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} className={inputCls} />
+              <input
+                id="name"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError("");
+                }}
+                className={inputCls}
+              />
             </div>
           )}
           <div>
@@ -94,7 +106,10 @@ export default function LoginScreen() {
               type="email"
               autoComplete="username"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+              }}
               className={inputCls}
               placeholder="voce@empresa.com"
             />
@@ -108,7 +123,10 @@ export default function LoginScreen() {
               type="password"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError("");
+              }}
               className={inputCls}
             />
           </div>
@@ -122,7 +140,10 @@ export default function LoginScreen() {
                 type="password"
                 autoComplete="new-password"
                 value={confirm}
-                onChange={(e) => { setConfirm(e.target.value); setError(""); }}
+                onChange={(e) => {
+                  setConfirm(e.target.value);
+                  setError("");
+                }}
                 className={inputCls}
               />
             </div>
@@ -131,35 +152,11 @@ export default function LoginScreen() {
           <Button
             type="submit"
             className="w-full"
-            disabled={!email || !password || (mode === "register" && (!name.trim() || !confirm))}
+            disabled={loading || !email || !password || (mode === "register" && (!name.trim() || !confirm))}
           >
-            {mode === "login" ? "Entrar" : "Criar conta e entrar"}
+            {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta e entrar"}
           </Button>
         </form>
-
-        {mode === "login" && (
-          <div className="border-t border-slate-100 pt-4">
-            <p className="mb-2 text-xs text-slate-500">
-              Modo demonstração — senha das contas de exemplo: <span className="font-semibold">{DEMO_PASSWORD}</span>
-            </p>
-            <div className="space-y-1.5">
-              {demo.map(({ user, description }) => (
-                <button
-                  key={user!.id}
-                  type="button"
-                  onClick={() => loginAs(user!.id)}
-                  className="flex w-full items-center gap-2.5 rounded-card border border-slate-200 px-2.5 py-2 text-left hover:bg-slate-50"
-                >
-                  <Avatar user={user!} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-ink">{user!.name}</p>
-                    <p className="text-[11px] leading-snug text-slate-500">{description}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
